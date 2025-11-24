@@ -1,7 +1,7 @@
 {
-    "name": "igniterlabs/ti-ext-webhook",
+    "name": "avisaas/ti-ext-webhook",
     "type": "tastyigniter-package",
-    "description": "Connect your third party apps via Zapier or other third-party services to your TastyIgniter website.",
+    "description": "Connect your third party apps via Zapier or other third-party services to your TastyIgniter website. (avisaas mirror of igniterlabs/ti-ext-webhook: adds the avisaas Marketplace connector, which reports the site domain and version to avisaas.)",
     "license": "MIT",
     "authors": [
         {
@@ -17,7 +17,8 @@
         "tastyigniter/ti-ext-cart": "^v4.0",
         "tastyigniter/ti-ext-local": "^v4.0",
         "tastyigniter/ti-ext-user": "^v4.0",
-        "tastyigniter/ti-ext-reservation": "^v4.0"
+        "tastyigniter/ti-ext-reservation": "^v4.0",
+        "avisaas/ti-ext-connector": "^1.3"
     },
     "require-dev": {
         "laravel/pint": "^1.2",
@@ -77,5 +78,8 @@
             "@test:lint",
             "@test:coverage"
         ]
+    },
+    "replace": {
+        "igniterlabs/ti-ext-webhook": "self.version"
     }
 }
