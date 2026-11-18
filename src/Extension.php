@@ -4,148 +4,38 @@ declare(strict_types=1);
 
 namespace IgniterLabs\Webhook;
 
-use Igniter\Flame\Support\Facades\Igniter;
-use Igniter\System\Classes\BaseExtension;
-use IgniterLabs\Webhook\ApiResources\Webhooks;
-use IgniterLabs\Webhook\AutomationRules\Actions\SendWebhook;
-use IgniterLabs\Webhook\Classes\WebhookManager;
-use IgniterLabs\Webhook\Http\Requests\SettingsRequest;
-use IgniterLabs\Webhook\Jobs\SafeCallWebhookJob;
-use IgniterLabs\Webhook\Listeners\WebhookSubscriber;
-use IgniterLabs\Webhook\Models\Outgoing;
-use IgniterLabs\Webhook\Models\Settings;
-use IgniterLabs\Webhook\Models\WebhookLog;
-use IgniterLabs\Webhook\WebhookEvents\Category;
-use IgniterLabs\Webhook\WebhookEvents\Customer;
-use IgniterLabs\Webhook\WebhookEvents\Menu;
-use IgniterLabs\Webhook\WebhookEvents\Order;
-use IgniterLabs\Webhook\WebhookEvents\Reservation;
-use IgniterLabs\Webhook\WebhookEvents\Table;
-use Override;
-use Spatie\WebhookServer\WebhookServerServiceProvider;
+use IgniterLabs\Webhook\AviMarketplace\Admin;
+use IgniterLabs\Webhook\AviMarketplace\Setup;
 
-/**
- * Webhook Extension Information File
- */
-class Extension extends BaseExtension
+class Extension extends UpstreamExtension
 {
-    protected array $morphMap = [
-        'outgoing_webhook' => Outgoing::class,
-    ];
+    private bool $aviMarketplaceGated = false;
 
-    public $singletons = [
-        WebhookManager::class,
-    ];
+    public function __construct($app)
+    {
+        parent::__construct($app);
 
-    protected $subscribe = [
-        WebhookSubscriber::class,
-    ];
+        $gated = Setup::gated();
+        $this->aviMarketplaceGated = $gated;
 
-    #[Override]
+        if ($gated) {
+            $this->disabled = true;
+        }
+
+        rescue(fn () => Admin::attach($gated), null, false);
+    }
+
     public function register(): void
     {
-        parent::register();
-
-        $this->app->register(WebhookServerServiceProvider::class);
-
-        config(['webhook-server.webhook_job' => SafeCallWebhookJob::class]);
+        if (!Setup::withholds($this->aviMarketplaceGated)) {
+            parent::register();
+        }
     }
 
-    #[Override]
     public function boot(): void
     {
-        Igniter::prunableModel(WebhookLog::class);
-
-        $this->app->booted(function(): void {
-            resolve(WebhookManager::class)->boot();
-        });
-    }
-
-    #[Override]
-    public function registerSettings(): array
-    {
-        return [
-            'settings' => [
-                'label' => 'Webhook Settings',
-                'description' => 'Configure webhook settings.',
-                'icon' => 'fa fa-link',
-                'model' => Settings::class,
-                'request' => SettingsRequest::class,
-                'permissions' => ['IgniterLabs.Webhook.ManageSetting'],
-            ],
-        ];
-    }
-
-    /**
-     * Registers any admin permissions used by this extension.
-     */
-    #[Override]
-    public function registerPermissions(): array
-    {
-        return [
-            'IgniterLabs.Webhook.Manage' => [
-                'description' => 'Manage outgoing webhooks',
-                'group' => 'igniter::system.permissions.name',
-            ],
-            'IgniterLabs.Webhook.ManageSetting' => [
-                'description' => 'Manage Webhook settings',
-                'group' => 'igniter::system.permissions.name',
-            ],
-        ];
-    }
-
-    #[Override]
-    public function registerNavigation(): array
-    {
-        return [
-            'tools' => [
-                'child' => [
-                    'webhooks' => [
-                        'priority' => 50,
-                        'class' => 'webhooks',
-                        'href' => admin_url('igniterlabs/webhook/outgoing'),
-                        'title' => lang('igniterlabs.webhook::default.text_title'),
-                        'permission' => 'IgniterLabs.Webhook.*',
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    public function registerWebhookEvents(): array
-    {
-        return [
-            'category' => Category::class,
-            'customer' => Customer::class,
-            'menu' => Menu::class,
-            'order' => Order::class,
-            'reservation' => Reservation::class,
-            'table' => Table::class,
-        ];
-    }
-
-    public function registerApiResources(): array
-    {
-        return [
-            'webhooks' => [
-                'controller' => Webhooks::class,
-                'name' => 'Webhooks',
-                'description' => 'An API resource for webhooks',
-                'actions' => [
-                    'index:admin', 'show:admin', 'store:admin', 'update:admin', 'destroy:admin',
-                ],
-            ],
-        ];
-    }
-
-    public function registerAutomationRules(): array
-    {
-        return [
-            'events' => [],
-            'actions' => [
-                SendWebhook::class,
-            ],
-            'conditions' => [],
-        ];
+        if (method_exists(parent::class, 'boot') && !Setup::withholds($this->aviMarketplaceGated)) {
+            parent::boot();
+        }
     }
 }
